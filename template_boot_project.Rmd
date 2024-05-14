@@ -1,0 +1,36 @@
+---
+title: "Project bootstrap (dataset)"
+author: "Hsieh Boh Yang, Emmanuel Mathew Thomas"
+institute: "Simulation in Prob and Stats BSc AMC at UC3M"
+date: "14 May 2024"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Introduction
+
+General explanation of the project with your own words. Include also a description of the type of bootstrap intervals that will be presented and a discussion of computational issues including code chunks with the functions that are specifically written to answer the questions (alternatively, present the code in an Appendix).
+
+# Results
+
+## CIs on the regression coefficientes for the initial model 
+
+## Backward elimination procedure
+
+## CIs on the regression coefficientes for the final model
+
+##  CI(s) on the mean response
+
+
+# References (not mandatory)
+
+Including textbooks, webpages, and class notes.
