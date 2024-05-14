@@ -1,62 +1,56 @@
 # Load necessary libraries
-library(MASS) # for rlm function
-library(boot) # for boot function
+library(MASS)
+library(boot)
 
-# Step 1: Read the data file for a specific student
+# Load dataset
 data <- read.csv("./data/data_100529711.csv", header = TRUE)
 
-# Step 2: Build robust linear regression model
-model <- rlm(y ~ x1 + x2 + x3, data = data)
+# 1. linear regression model with the three covariates 
+# Fit robust linear regression model
+robust_model <- rlm(y ~ x1 + x2 + x3, data=data)
+summary(robust_model)
 
-# Convert categorical variables to factors
-data$x1 <- as.factor(data$x1)
-data$x2 <- as.factor(data$x2)
-data$x3 <- as.factor(data$x3)
-
-# Step 3: Bootstrap for confidence intervals
+# Bootstrap for confidence intervals
 boot_func <- function(data, indices) {
-  # Subset data based on indices
-  boot_data <- data[indices, ]
-  
-  # Reorder rows to match original data
-  boot_data <- boot_data[match(rownames(data), rownames(boot_data)), ]
-  
-  # Fit robust linear regression model
-  fit <- rlm(y ~ x1 + x2 + x3, data = boot_data)
-  
-  # Return coefficients
+  fit <- rlm(y ~ x1 + x2 + x3, data=data[indices, ])
   return(coef(fit))
-  
-  
-  bootstrap_results <- boot(data = data, statistic = boot_func, R = 1000)
-  
-  boot_ci <- boot.ci(bootstrap_results, type = "perc", index = 1:4)
-  
-  # Print bootstrap confidence intervals
-  print(boot_ci)
 }
-  # Step 3: Backward elimination
-  while(TRUE) {
-    # Get confidence intervals for coefficients
-    boot_ci <- boot.ci(bootstrap_results, type = "perc", index = 1:4)
-    
-    # Extract confidence intervals from the 'percent' component
-    lower_bounds <- boot_ci$percent[1, 2]
-    upper_bounds <- boot_ci$percent[1, 3]
-    
-    # Find the widest confidence interval
-    widest_ci_index <- which.max(upper_bounds - lower_bounds)
-    
-    # Check if the widest confidence interval includes zero
-    if(lower_bounds[widest_ci_index] <= 0 && upper_bounds[widest_ci_index] >= 0) {
-      # If widest confidence interval includes zero, break the loop
-      break
-    } else {
-      # Otherwise, remove the corresponding covariate and rebuild the model
-      removed_covariate <- names(data)[widest_ci_index] # No need to adjust index
-      data <- data[, -which(names(data) == removed_covariate)]
-      bootstrap_results <- boot(data = data, statistic = boot_func, R = 1000)
-      
-      print(paste("Remaining covariates:", paste(names(data), collapse = ", ")))
-    }
-  }
+boot_results <- boot(data, boot_func, R=1000)
+boot_ci <- boot.ci(boot_results, type="bca")
+
+# Extract bootstrap confidence intervals for coefficients
+conf_intervals <- boot_ci$bca[1, c(3, 4)]
+
+# Extract lower and upper bounds of confidence intervals
+lower_bound <- conf_intervals[1]
+upper_bound <- conf_intervals[2]
+
+# 2. Backward elimination
+# Identify non-significant coefficients
+non_sig_vars <- which(lower_bound > 0 | upper_bound < 0)
+
+# Identify significant variables
+sig_vars <- paste("x", setdiff(1:3, non_sig_vars), sep = "")
+
+# Construct new formula
+new_formula <- as.formula(paste("y ~", paste(sig_vars, collapse = " + ")))
+
+# Fit model with significant variables only
+final_model <- rlm(new_formula, data = data)
+summary(final_model)
+
+# Step 3: Confidence intervals on the regression coefficients of final model
+final_boot_func <- function(data, indices) {
+  fit <- rlm(y ~ x1 + x2 + x3, data=data[indices, ])
+  return(coef(fit))
+}
+
+final_boot_results <- boot(data, final_boot_func, R=1000)
+final_boot_ci <- boot.ci(final_boot_results, type="bca")
+
+# Step 4: Confidence interval on the mean response
+# Define new data point
+new_data <- data.frame(x1 = 14, x2 = 14, x3 = 14)
+# Predict response for new data
+response_pred <- predict(final_model, newdata = new_data, interval = "confidence", level = 0.95)
+response_pred
